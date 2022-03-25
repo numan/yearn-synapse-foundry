@@ -20,6 +20,14 @@ string constant vaultArtifact = "artifacts/Vault.json";
 contract StrategyFixture is ExtendedDSTest, stdCheats {
     using SafeERC20 for IERC20;
 
+    //Setup some addresses for contracts the strategy will interact with
+    address public syn3PoolSwap = 0x85662fd123280827e11C59973Ac9fcBE838dC3B4;
+    address public synStakingMC = 0xaeD5b25BE1c3163c907a471082640450F928DDFE;
+    address public solidlyRouter = 0xa38cd27185a464914D3046f0AB9d43356B34829D;
+
+    uint256 public pid = 3;
+    uint8 public syn3PoolUSDCTokenIndex = 1;
+
     // we use custom names that are unlikely to cause collisions so this contract
     // can be inherited easily
     // TODO: see if theres a better way to use this
@@ -49,8 +57,7 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
         _setTokenAddrs();
 
         // Choose a token from the tokenAddrs mapping, see _setTokenAddrs for options
-        weth = IERC20(tokenAddrs["WETH"]);
-        want = IERC20(tokenAddrs["DAI"]);
+        want = IERC20(tokenAddrs["USDC"]);
 
         deployVaultAndStrategy(
             address(want),
@@ -112,7 +119,15 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
 
     // Deploys a strategy
     function deployStrategy(address _vault) public returns (address) {
-        Strategy _strategy = new Strategy(_vault);
+        Strategy _strategy = new Strategy(
+            _vault,
+            tokenAddrs["SYN3PoolLP"],
+            syn3PoolSwap,
+            solidlyRouter,
+            synStakingMC,
+            pid,
+            syn3PoolUSDCTokenIndex
+        );
 
         return address(_strategy);
     }
@@ -160,8 +175,11 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
         tokenAddrs["YFI"] = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
         tokenAddrs["WETH"] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
         tokenAddrs["LINK"] = 0x514910771AF9Ca656af840dff83E8264EcF986CA;
-        tokenAddrs["USDT"] = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+        tokenAddrs["USDT"] = 0x049d68029688eAbF473097a2fC38ef61633A3C7A;
         tokenAddrs["DAI"] = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-        tokenAddrs["USDC"] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+        tokenAddrs["USDC"] = 0x04068DA6C83AFCFA0e13ba15A6696662335D5B75;
+        tokenAddrs["SYN3PoolLP"] = 0x2DC777ff99058a12844A33D9B1AE6c8AB4701F66;
+        tokenAddrs["SYN"] = 0xE55e19Fb4F2D85af758950957714292DAC1e25B2;
+        tokenAddrs["NUSD"] = 0xED2a7edd7413021d440b09D654f3b87712abAB66;
     }
 }
