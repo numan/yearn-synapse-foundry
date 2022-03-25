@@ -166,9 +166,11 @@ contract Strategy is BaseStrategy {
     }
 
     function liquidateAllPositions() internal override returns (uint256) {
-        synStakingMC.emergencyWithdraw(pid, address(this));
 
+        // unstake all staked token
+        synStakingMC.emergencyWithdraw(pid, address(this));
         uint256 _lpTokenBalance = unstakedLPBalance();
+
         if (_lpTokenBalance > 0) {
             // Try to withdraw everything in `want`
             _withdrawLiquidity(_lpTokenBalance);
@@ -179,10 +181,6 @@ contract Strategy is BaseStrategy {
             // withdraw in anything else that we can get
             if (_lpTokenBalance > 0) {
                 uint256[] memory minAmounts = new uint256[](3);
-                //todo: should we try to not withdraw any amount in usdc?
-                minAmounts[0] = 0; // nUSD
-                minAmounts[1] = 0; // USDC
-                minAmounts[2] = 0; // fUSDT
                 syn3PoolSwap.removeLiquidity(
                     _lpTokenBalance,
                     minAmounts,
@@ -287,9 +285,7 @@ contract Strategy is BaseStrategy {
         _checkAllowance(address(syn3PoolSwap), address(want), _amount);
 
         uint256[] memory liquidityToAdd = new uint256[](3);
-        liquidityToAdd[0] = 0; // nUSD
         liquidityToAdd[1] = _amount; // USDC
-        liquidityToAdd[2] = 0; // fUSDT
 
         syn3PoolSwap.addLiquidity(
             liquidityToAdd,
@@ -344,6 +340,15 @@ contract Strategy is BaseStrategy {
 
     /**
      * @notice
+     *  Total balance of LP tokens that haven't been staked yet
+     * @return The amount in `nUSD-LP` that haven't been staked yet
+     **/
+    function unstakedLPBalance() public view returns (uint256) {
+        return syn3PoolLP.balanceOf(address(this));
+    }
+
+    /**
+     * @notice
      *  The total amount of SYN that hasn't been claimed yet
      * @return The amount in `SYN` that hasn't been claimed yet
      **/
@@ -371,15 +376,6 @@ contract Strategy is BaseStrategy {
      **/
     function totalSynBalance() public view returns (uint256) {
         return claimedSynBalance() + unclaimedSynBalance();
-    }
-
-    /**
-     * @notice
-     *  Total balance of LP tokens that haven't been staked yet
-     * @return The amount in `nUSD-LP` that haven't been staked yet
-     **/
-    function unstakedLPBalance() public view returns (uint256) {
-        return syn3PoolLP.balanceOf(address(this));
     }
 
     function wantBalance() public view returns (uint256) {
