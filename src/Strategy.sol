@@ -8,8 +8,8 @@ pragma experimental ABIEncoderV2;
 import {BaseStrategy, StrategyParams} from "@yearnvaults/contracts/BaseStrategy.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {ISwap} from "./interfaces/synapse/ISwap.sol";
 import {IMasterChef} from "./interfaces/synapse/IMasterChef.sol";
@@ -70,9 +70,7 @@ contract Strategy is BaseStrategy {
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
-        // Incase we aren't able to withdraw our deposit all in `want`, we might have other types of stable coin tokens
-        return
-            nusdBalance() + usdtBalance() + wantBalance() + synToWantBalance();
+        return scaledLPtoWant() + wantBalance();
     }
 
     function prepareReturn(uint256 _debtOutstanding)
@@ -132,7 +130,6 @@ contract Strategy is BaseStrategy {
         override
         returns (uint256 _liquidatedAmount, uint256 _loss)
     {
-
         uint256 _liquidWant = wantBalance();
 
         _amountNeeded = Math.min(_amountNeeded, estimatedTotalAssets()); // Otherwise we can end up declaring a liquidation loss when _amountNeeded is more than we own
@@ -166,7 +163,6 @@ contract Strategy is BaseStrategy {
     }
 
     function liquidateAllPositions() internal override returns (uint256) {
-
         // unstake all staked token
         synStakingMC.emergencyWithdraw(pid, address(this));
         uint256 _lpTokenBalance = unstakedLPBalance();
@@ -353,8 +349,10 @@ contract Strategy is BaseStrategy {
      * @return The amount in `SYN` that hasn't been claimed yet
      **/
     function unclaimedSynBalance() public view returns (uint256) {
-        (, uint256 unclaimedRewards) = synStakingMC
-            .userInfo(pid, address(this));
+        (, uint256 unclaimedRewards) = synStakingMC.userInfo(
+            pid,
+            address(this)
+        );
         return unclaimedRewards;
     }
 
@@ -388,6 +386,40 @@ contract Strategy is BaseStrategy {
 
     function nusdBalance() public view returns (uint256) {
         return nUSD.balanceOf(address(this));
+    }
+
+    // returns an estimate of want tokens based on lp token balance
+    function scaledLPtoWant() public view returns (uint256 _amount) {
+        return scaleLPToWant(stakedLPBalance() + unstakedLPBalance());
+    }
+
+    /// use bpt rate to estimate equivalent amount of want.
+    function scaleLPToWant(uint256 _unscaledAmount)
+        public
+        view
+        returns (uint256 _amount)
+    {
+        uint256 unscaled = _unscaledAmount *
+            (syn3PoolSwap.getVirtualPrice() / 1e18);
+        return
+            _scaleDecimals(
+                unscaled,
+                ERC20(address(syn3PoolLP)),
+                ERC20(address(want))
+            );
+    }
+
+    function _scaleDecimals(
+        uint256 _amount,
+        ERC20 _fromToken,
+        ERC20 _toToken
+    ) internal view returns (uint256 _scaled) {
+        uint256 decFrom = _fromToken.decimals();
+        uint256 decTo = _toToken.decimals();
+        return
+            decTo > decFrom
+                ? _amount * (10**(decTo - decFrom))
+                : _amount / (10**(decFrom - decTo));
     }
 
     function _checkAllowance(
