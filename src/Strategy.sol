@@ -39,6 +39,18 @@ contract Strategy is BaseStrategy {
     // router
     IUniswapV2Router02 internal immutable solidlyRouter;
 
+    //1	    0.01%
+    //5	    0.05%
+    //10	0.1%
+    //50	0.5%
+    //100	1%
+    //1000	10%
+    //10000	100%
+    uint256 public maxSlippageIn; // bips
+    uint256 public maxSlippageOut; // bips
+
+    uint256 internal constant BASIS_ONE_PERCENT = 10000;
+
     uint256 internal immutable pid; // Staking contract Pool ID
     uint8 internal immutable syn3PoolUSDCTokenIndex; // Index of USDT in Synapse Fantom 3 Pool
 
@@ -49,7 +61,9 @@ contract Strategy is BaseStrategy {
         address _solidlyRouter,
         address _synStakingMC,
         uint256 _stakingContractPoolId,
-        uint8 _synStable3PoolUSDCTokenIndex
+        uint8 _synStable3PoolUSDCTokenIndex,
+        uint256 _maxSlippageIn,
+        uint256 _maxSlippageOut
     ) BaseStrategy(_vault) {
         minReportDelay = 60 * 60 * 24 * 7; // 7 days
 
@@ -57,6 +71,9 @@ contract Strategy is BaseStrategy {
         syn3PoolSwap = ISwap(_synStable3Pool); // FTM Mainnet: 0x85662fd123280827e11C59973Ac9fcBE838dC3B4
         synStakingMC = IMasterChef(_synStakingMC); // FTM Mainnet: 0xaeD5b25BE1c3163c907a471082640450F928DDFE
         solidlyRouter = IUniswapV2Router02(_solidlyRouter); // FTM Mainnet: 0xa38cd27185a464914D3046f0AB9d43356B34829D
+
+        maxSlippageIn = _maxSlippageIn;
+        maxSlippageOut = _maxSlippageOut;
 
         pid = _stakingContractPoolId; // FTM Mainnet: 3
         syn3PoolUSDCTokenIndex = _synStable3PoolUSDCTokenIndex; // FTM Mainnet: 1
@@ -280,12 +297,15 @@ contract Strategy is BaseStrategy {
     function _addliquidity(uint256 _amount) internal {
         _checkAllowance(address(syn3PoolSwap), address(want), _amount);
 
+        uint256 _expectedLPTokensOut = scaleWantToLP(_amount) *
+            ((BASIS_ONE_PERCENT - maxSlippageIn) / BASIS_ONE_PERCENT);
+
         uint256[] memory liquidityToAdd = new uint256[](3);
         liquidityToAdd[1] = _amount; // USDC
 
         syn3PoolSwap.addLiquidity(
             liquidityToAdd,
-            0, //todo: should be specify a minimum amount here? Could be some loss because of inbalance,
+            _expectedLPTokensOut,
             block.timestamp
         );
     }
@@ -295,10 +315,14 @@ contract Strategy is BaseStrategy {
     }
 
     function _withdrawLiquidity(uint256 _lpAmount) internal {
+        uint256 expectedWant = scaleLPToWant(_lpAmount);
+        uint256 _minAmountOfWant = expectedWant *
+            ((BASIS_ONE_PERCENT - maxSlippageOut) / BASIS_ONE_PERCENT);
+
         syn3PoolSwap.removeLiquidityOneToken(
             _lpAmount,
             syn3PoolUSDCTokenIndex,
-            0, // min amount
+            _minAmountOfWant,
             block.timestamp
         );
     }
@@ -393,7 +417,22 @@ contract Strategy is BaseStrategy {
         return scaleLPToWant(stakedLPBalance() + unstakedLPBalance());
     }
 
-    /// use bpt rate to estimate equivalent amount of want.
+    function scaleWantToLP(uint256 _amountTokens)
+        public
+        view
+        returns (uint256 _amount)
+    {
+        uint256 unscaled = _amountTokens *
+            (1e18 / syn3PoolSwap.getVirtualPrice());
+        return
+            _scaleDecimals(
+                unscaled,
+                ERC20(address(want)),
+                ERC20(address(syn3PoolLP))
+            );
+    }
+
+    /// use 3pool lp virtual price to estimate equivalent amount of want.
     function scaleLPToWant(uint256 _unscaledAmount)
         public
         view
@@ -420,6 +459,20 @@ contract Strategy is BaseStrategy {
             decTo > decFrom
                 ? _amount * (10**(decTo - decFrom))
                 : _amount / (10**(decFrom - decTo));
+    }
+
+    function setParams(uint256 _maxSlippageIn, uint256 _maxSlippageOut)
+        public
+        onlyVaultManagers
+    {
+        require(_maxSlippageIn <= BASIS_ONE_PERCENT, "maxSlippageIn too high");
+        maxSlippageIn = _maxSlippageIn;
+
+        require(
+            _maxSlippageOut <= BASIS_ONE_PERCENT,
+            "maxSlippageOut too high"
+        );
+        maxSlippageOut = _maxSlippageOut;
     }
 
     function _checkAllowance(
