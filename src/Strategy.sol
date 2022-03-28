@@ -152,21 +152,24 @@ contract Strategy is BaseStrategy {
         _amountNeeded = Math.min(_amountNeeded, estimatedTotalAssets()); // Otherwise we can end up declaring a liquidation loss when _amountNeeded is more than we own
 
         if (_liquidWant < _amountNeeded) {
-            _unstakeLPTokens(stakedLPBalance());
+            uint256 _lpTokensToSell = scaleWantToLP(_amountNeeded); // How many LP tokens do we need to get the required amount of `want`
+
+            uint256 _stakedLpTokens = stakedLPBalance(); // How many LP tokens do we have staked
+            uint256 _unstakedLPTokens = unstakedLPBalance(); // How many are available to unstake?
+            uint256 _requiredLPTokensToUnstake; // How many more LP tokens do we need to unstake to get the required amount of `want`. ie 
+
+            // Free up the minimum amount of LP tokens to get to the amount of `want` we need
+            if (_unstakedLPTokens < _lpTokensToSell) {
+                _requiredLPTokensToUnstake = _lpTokensToSell - _unstakedLPTokens;
+                if (_stakedLpTokens >= _requiredLPTokensToUnstake) {
+                    _unstakeLPTokens(_requiredLPTokensToUnstake);
+                } else {
+                    _unstakeLPTokens(_stakedLpTokens);
+                }
+            }
 
             //withdraw from pool
             _withdrawLiquidity(unstakedLPBalance());
-
-            //check current want balance
-            uint256 _postWithdrawWant = wantBalance();
-
-            //redeposit to pool
-            if (_postWithdrawWant > _amountNeeded) {
-                _addliquidity(_postWithdrawWant - _amountNeeded);
-
-                //Stake the LP tokens
-                synStakingMC.deposit(pid, unstakedLPBalance());
-            }
 
             _liquidWant = wantBalance();
         }
