@@ -8,6 +8,7 @@ import {ExtendedDSTest} from "./ExtendedDSTest.sol";
 import {stdCheats} from "forge-std/stdlib.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {IVault} from "../../interfaces/Vault.sol";
+import {IUniswapV2Router02} from "../../interfaces/solidly/IUniswapV2Router02.sol";
 
 // NOTE: if the name of the strat or file changes this needs to be updated
 import {Strategy} from "../../Strategy.sol";
@@ -50,8 +51,17 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
     address public strategist = address(6);
     address public keeper = address(7);
 
+    address public swapLPUser = address(8);
+
+    uint256 public constant ONE_PERCENT = 10_000;
+    uint256 public SLIPPAGE_IN;
+    uint256 public SLIPPAGE_OUT;
+
+    // Convinence method
+    uint256 public constant ONE_USDC = 1e6 wei;
+
     // Used for integer approximation
-    uint256 public constant DELTA = 10**5;
+    uint256 public constant DELTA = 10**3;
 
     function setUp() public virtual {
         _setTokenAddrs();
@@ -83,6 +93,14 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
         vm_std_cheats.label(management, "Management");
         vm_std_cheats.label(strategist, "Strategist");
         vm_std_cheats.label(keeper, "Keeper");
+        vm_std_cheats.label(address(weth), "WETH");
+        vm_std_cheats.label(address(want), "USDC");
+        vm_std_cheats.label(syn3PoolSwap, "Synapse Stable 3 Pool");
+        vm_std_cheats.label(synStakingMC, "Synapse Staking Master Chef");
+        vm_std_cheats.label(solidlyRouter, "Solidly SYN<>USDC Pool");
+
+        SLIPPAGE_IN = 5;
+        SLIPPAGE_OUT = 5;
 
         // do here additional setup
         vm_std_cheats.prank(gov);
@@ -126,7 +144,9 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
             solidlyRouter,
             synStakingMC,
             pid,
-            syn3PoolUSDCTokenIndex
+            syn3PoolUSDCTokenIndex,
+            5000,
+            5000
         );
 
         return address(_strategy);

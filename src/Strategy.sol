@@ -49,7 +49,7 @@ contract Strategy is BaseStrategy {
     uint256 public maxSlippageIn; // bips
     uint256 public maxSlippageOut; // bips
 
-    uint256 internal constant BASIS_ONE_PERCENT = 10000;
+    uint256 internal constant BASIS_ONE_PERCENT = 10_000;
 
     uint256 internal immutable pid; // Staking contract Pool ID
     uint8 internal immutable syn3PoolUSDCTokenIndex; // Index of USDT in Synapse Fantom 3 Pool
@@ -65,6 +65,12 @@ contract Strategy is BaseStrategy {
         uint256 _maxSlippageIn,
         uint256 _maxSlippageOut
     ) BaseStrategy(_vault) {
+        require(_maxSlippageIn <= BASIS_ONE_PERCENT, "maxSlippageIn too high");
+
+        require(
+            _maxSlippageOut <= BASIS_ONE_PERCENT,
+            "maxSlippageOut too high"
+        );
         minReportDelay = 60 * 60 * 24 * 7; // 7 days
 
         syn3PoolLP = IERC20(_synStable3PoolLP); // FTM Mainnet: 0x2DC777ff99058a12844A33D9B1AE6c8AB4701F66
@@ -102,8 +108,11 @@ contract Strategy is BaseStrategy {
         // Calim all our SYN tokens and withdraw all of our `nUSD-LP` tokens
         synStakingMC.harvest(pid, address(this));
 
-        // Trade all of our SYN tokens for `want` tokens
-        _sellSynToWant(claimedSynBalance());
+        uint256 _claimedSYNBalance = claimedSynBalance();
+        if (_claimedSYNBalance > 0) {
+            // Trade all of our SYN tokens for `want` tokens
+            _sellSynToWant(_claimedSYNBalance);
+        }
 
         //grab the estimate total debt from the vault
         uint256 _vaultDebt = vault.strategies(address(this)).totalDebt;
@@ -139,6 +148,7 @@ contract Strategy is BaseStrategy {
         if (_looseWant > _debtOutstanding) {
             uint256 _amountToDeposit = _looseWant - _debtOutstanding;
             _addliquidity(_amountToDeposit);
+            _stakeLPTokens(unstakedLPBalance());
         }
     }
 
@@ -149,27 +159,32 @@ contract Strategy is BaseStrategy {
     {
         uint256 _liquidWant = wantBalance();
 
-        _amountNeeded = Math.min(_amountNeeded, estimatedTotalAssets()); // Otherwise we can end up declaring a liquidation loss when _amountNeeded is more than we own
+        _amountNeeded = Math.min(
+            _amountNeeded, estimatedTotalAssets()); // Otherwise we can end up declaring a liquidation loss when _amountNeeded is more than we own
 
         if (_liquidWant < _amountNeeded) {
             uint256 _lpTokensToSell = scaleWantToLP(_amountNeeded); // How many LP tokens do we need to get the required amount of `want`
 
             uint256 _stakedLpTokens = stakedLPBalance(); // How many LP tokens do we have staked
             uint256 _unstakedLPTokens = unstakedLPBalance(); // How many are available to unstake?
-            uint256 _requiredLPTokensToUnstake; // How many more LP tokens do we need to unstake to get the required amount of `want`. ie 
+            uint256 _requiredLPTokensToUnstake; // How many more LP tokens do we need to unstake to get the required amount of `want`.
 
             // Free up the minimum amount of LP tokens to get to the amount of `want` we need
             if (_unstakedLPTokens < _lpTokensToSell) {
-                _requiredLPTokensToUnstake = _lpTokensToSell - _unstakedLPTokens;
+                _requiredLPTokensToUnstake =
+                    _lpTokensToSell -
+                    _unstakedLPTokens;
                 if (_stakedLpTokens >= _requiredLPTokensToUnstake) {
                     _unstakeLPTokens(_requiredLPTokensToUnstake);
-                } else {
+                } else if (_stakedLpTokens > 0) {
                     _unstakeLPTokens(_stakedLpTokens);
                 }
             }
 
             //withdraw from pool
-            _withdrawLiquidity(unstakedLPBalance());
+            if (unstakedLPBalance() > 0) {
+                _withdrawLiquidity(unstakedLPBalance());
+            }
 
             _liquidWant = wantBalance();
         }
@@ -317,7 +332,14 @@ contract Strategy is BaseStrategy {
         synStakingMC.withdraw(pid, _amount, address(this));
     }
 
+    function _stakeLPTokens(uint256 _amount) internal {
+        _checkAllowance(address(synStakingMC), address(syn3PoolLP), _amount);
+        synStakingMC.deposit(pid, _amount, address(this));
+    }
+
     function _withdrawLiquidity(uint256 _lpAmount) internal {
+        _checkAllowance(address(syn3PoolSwap), address(syn3PoolLP), _lpAmount);
+
         uint256 expectedWant = scaleLPToWant(_lpAmount);
         uint256 _minAmountOfWant = expectedWant *
             ((BASIS_ONE_PERCENT - maxSlippageOut) / BASIS_ONE_PERCENT);
@@ -425,8 +447,7 @@ contract Strategy is BaseStrategy {
         view
         returns (uint256 _amount)
     {
-        uint256 unscaled = _amountTokens *
-            (1e18 / syn3PoolSwap.getVirtualPrice());
+        uint256 unscaled = (_amountTokens * 1e18) / syn3PoolSwap.getVirtualPrice();
         return
             _scaleDecimals(
                 unscaled,

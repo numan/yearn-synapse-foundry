@@ -28,7 +28,7 @@ contract StrategyOperationsTest is StrategyFixture {
     /// Test Operations
     function testStrategyOperation(uint256 _amount) public {
         vm_std_cheats.assume(
-            _amount > 0.1 ether && _amount < 100_000_000 ether
+            _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
         );
         tip(address(want), user, _amount);
 
@@ -39,11 +39,12 @@ contract StrategyOperationsTest is StrategyFixture {
         vault.deposit(_amount);
         assertRelApproxEq(want.balanceOf(address(vault)), _amount, DELTA);
 
-        // Note: need to check if this is equivalent to chain.sleep in brownie
         skip(60 * 3); // skip 3 minutes
+
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, DELTA);
+        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
+
         // tend
         vm_std_cheats.prank(strategist);
         strategy.tend();
@@ -51,7 +52,8 @@ contract StrategyOperationsTest is StrategyFixture {
         vm_std_cheats.prank(user);
         vault.withdraw();
 
-        assertRelApproxEq(want.balanceOf(user), balanceBefore, DELTA);
+
+        assertRelApproxEq(want.balanceOf(user), balanceBefore, SLIPPAGE_OUT);
     }
 
     function testEmergencyExit(uint256 _amount) public {
