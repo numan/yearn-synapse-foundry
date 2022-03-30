@@ -66,13 +66,16 @@ contract Strategy is BaseStrategy {
         uint256 _maxSlippageIn,
         uint256 _maxSlippageOut
     ) BaseStrategy(_vault) {
-        require(_maxSlippageIn <= ONE_HUNDRED_PERCENT, "maxSlippageIn too high");
+        require(
+            _maxSlippageIn <= ONE_HUNDRED_PERCENT,
+            "maxSlippageIn too high"
+        );
 
         require(
             _maxSlippageOut <= ONE_HUNDRED_PERCENT,
             "maxSlippageOut too high"
         );
-        minReportDelay = 60 * 60 * 24 * 7; // 7 days
+        minReportDelay = 7 days;
 
         syn3PoolLP = IERC20(_synStable3PoolLP); // FTM Mainnet: 0x2DC777ff99058a12844A33D9B1AE6c8AB4701F66
         syn3PoolSwap = ISwap(_synStable3Pool); // FTM Mainnet: 0x85662fd123280827e11C59973Ac9fcBE838dC3B4
@@ -160,8 +163,7 @@ contract Strategy is BaseStrategy {
     {
         uint256 _liquidWant = wantBalance();
 
-        _amountNeeded = Math.min(
-            _amountNeeded, estimatedTotalAssets()); // Otherwise we can end up declaring a liquidation loss when _amountNeeded is more than we own
+        _amountNeeded = Math.min(_amountNeeded, estimatedTotalAssets()); // Otherwise we can end up declaring a liquidation loss when _amountNeeded is more than we own
 
         if (_liquidWant < _amountNeeded) {
             uint256 _lpTokensToSell = scaleWantToLP(_amountNeeded); // How many LP tokens do we need to get the required amount of `want`
@@ -185,7 +187,10 @@ contract Strategy is BaseStrategy {
             //withdraw from pool
             uint256 _unstakedLpBalance = unstakedLPBalance();
             if (_unstakedLpBalance > 0) {
-                _withdrawLiquidity(unstakedLPBalance(), _minAmountOfLPToWant(_unstakedLpBalance));
+                _withdrawLiquidity(
+                    unstakedLPBalance(),
+                    _minAmountOfLPToWant(_unstakedLpBalance)
+                );
             }
 
             _liquidWant = wantBalance();
@@ -291,11 +296,12 @@ contract Strategy is BaseStrategy {
     function _sellSynToWant(uint256 _amount) internal {
         _checkAllowance(address(solidlyRouter), address(SYN), _amount);
 
-        IUniswapV2Router02.route[] memory routes = new IUniswapV2Router02.route[](1);
+        IUniswapV2Router02.route[]
+            memory routes = new IUniswapV2Router02.route[](1);
         routes[0].from = address(SYN);
         routes[0].to = address(want);
         routes[0].stable = false;
-        uint[] memory amounts = solidlyRouter.getAmountsOut(_amount, routes);
+        uint256[] memory amounts = solidlyRouter.getAmountsOut(_amount, routes);
 
         if (amounts[1] > 0) {
             solidlyRouter.swapExactTokensForTokensSimple(
@@ -308,7 +314,6 @@ contract Strategy is BaseStrategy {
                 block.timestamp
             );
         }
-
     }
 
     function _addliquidity(uint256 _amount) internal {
@@ -336,16 +341,21 @@ contract Strategy is BaseStrategy {
         synStakingMC.deposit(pid, _amount, address(this));
     }
 
-    function _minAmountOfLPToWant(uint256 _lpAmount) internal returns (uint256) {
+    function _minAmountOfLPToWant(uint256 _lpAmount)
+        internal
+        view
+        returns (uint256)
+    {
         uint256 expectedWant = scaleLPToWant(_lpAmount);
-        return expectedWant *
+        return
+            expectedWant *
             ((ONE_HUNDRED_PERCENT - maxSlippageOut) / ONE_HUNDRED_PERCENT);
-
-    
     }
-    function _withdrawLiquidity(uint256 _lpAmount, uint256 _minAmountOfWant) internal {
-        _checkAllowance(address(syn3PoolSwap), address(syn3PoolLP), _lpAmount);
 
+    function _withdrawLiquidity(uint256 _lpAmount, uint256 _minAmountOfWant)
+        internal
+    {
+        _checkAllowance(address(syn3PoolSwap), address(syn3PoolLP), _lpAmount);
 
         syn3PoolSwap.removeLiquidityOneToken(
             _lpAmount,
@@ -450,7 +460,8 @@ contract Strategy is BaseStrategy {
         view
         returns (uint256 _amount)
     {
-        uint256 unscaled = (_amountTokens * 1e18) / syn3PoolSwap.getVirtualPrice();
+        uint256 unscaled = (_amountTokens * 1e18) /
+            syn3PoolSwap.getVirtualPrice();
         return
             _scaleDecimals(
                 unscaled,
@@ -492,7 +503,10 @@ contract Strategy is BaseStrategy {
         public
         onlyVaultManagers
     {
-        require(_maxSlippageIn <= ONE_HUNDRED_PERCENT, "maxSlippageIn too high");
+        require(
+            _maxSlippageIn <= ONE_HUNDRED_PERCENT,
+            "maxSlippageIn too high"
+        );
         maxSlippageIn = _maxSlippageIn;
 
         require(
