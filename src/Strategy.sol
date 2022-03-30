@@ -183,8 +183,9 @@ contract Strategy is BaseStrategy {
             }
 
             //withdraw from pool
-            if (unstakedLPBalance() > 0) {
-                _withdrawLiquidity(unstakedLPBalance());
+            uint256 _unstakedLpBalance = unstakedLPBalance();
+            if (_unstakedLpBalance > 0) {
+                _withdrawLiquidity(unstakedLPBalance(), _minAmountOfLPToWant(_unstakedLpBalance));
             }
 
             _liquidWant = wantBalance();
@@ -204,7 +205,7 @@ contract Strategy is BaseStrategy {
         uint256 _lpTokenBalance = unstakedLPBalance();
         if (_lpTokenBalance > 0) {
             // Try to withdraw everything in `want`
-            _withdrawLiquidity(_lpTokenBalance);
+            _withdrawLiquidity(_lpTokenBalance, 0);
 
             _lpTokenBalance = unstakedLPBalance();
             // If we still have LP tokens after trying to withdraw everything in `want`,
@@ -335,12 +336,16 @@ contract Strategy is BaseStrategy {
         synStakingMC.deposit(pid, _amount, address(this));
     }
 
-    function _withdrawLiquidity(uint256 _lpAmount) internal {
+    function _minAmountOfLPToWant(uint256 _lpAmount) internal returns (uint256) {
+        uint256 expectedWant = scaleLPToWant(_lpAmount);
+        return expectedWant *
+            ((ONE_HUNDRED_PERCENT - maxSlippageOut) / ONE_HUNDRED_PERCENT);
+
+    
+    }
+    function _withdrawLiquidity(uint256 _lpAmount, uint256 _minAmountOfWant) internal {
         _checkAllowance(address(syn3PoolSwap), address(syn3PoolLP), _lpAmount);
 
-        uint256 expectedWant = scaleLPToWant(_lpAmount);
-        uint256 _minAmountOfWant = expectedWant *
-            ((ONE_HUNDRED_PERCENT - maxSlippageOut) / ONE_HUNDRED_PERCENT);
 
         syn3PoolSwap.removeLiquidityOneToken(
             _lpAmount,
