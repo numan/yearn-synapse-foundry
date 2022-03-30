@@ -121,6 +121,34 @@ contract StrategyOperationsTest is StrategyFixture {
         assertGt(vault.pricePerShare(), beforePps);
     }
 
+    function testNoSlippageAllowed() public {
+        uint256 _amount = ONE_USDC * 1_000_000;
+
+        tip(address(want), user, _amount);
+
+        // Deposit to the vault
+        vm_std_cheats.prank(user);
+        want.approve(address(vault), _amount);
+        vm_std_cheats.prank(user);
+        vault.deposit(_amount);
+        assertRelApproxEq(want.balanceOf(address(vault)), _amount, DELTA);
+
+        // change slippage params
+        vm_std_cheats.prank(gov);
+        strategy.setParams(0, 0);
+        assertEq(strategy.maxSlippageIn(), 0);
+        assertEq(strategy.maxSlippageOut(), 0);
+
+
+        // Harvest 1: Send funds through the strategy
+        // Should revert because some slippage will always happen when depositing as an LP
+        skip(1);
+        vm_std_cheats.prank(strategist);
+        vm_std_cheats.expectRevert("Couldn't mint min requested");
+        strategy.harvest();
+
+    }
+
     function testHarvestWithoutEnoughProfit(uint256 _amount) public {
         vm_std_cheats.assume(
             _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
