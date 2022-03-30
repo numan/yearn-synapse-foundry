@@ -14,6 +14,7 @@ import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 import {ISwap} from "./interfaces/synapse/ISwap.sol";
 import {IMasterChef} from "./interfaces/synapse/IMasterChef.sol";
 import {IUniswapV2Router02} from "./interfaces/solidly/IUniswapV2Router02.sol";
+import "../lib/forge-std/src/console.sol";
 
 contract Strategy is BaseStrategy {
     using SafeERC20 for IERC20;
@@ -49,7 +50,7 @@ contract Strategy is BaseStrategy {
     uint256 public maxSlippageIn; // bips
     uint256 public maxSlippageOut; // bips
 
-    uint256 internal constant BASIS_ONE_PERCENT = 10_000;
+    uint256 internal constant ONE_HUNDRED_PERCENT = 10_000; // 100% bips
 
     uint256 internal immutable pid; // Staking contract Pool ID
     uint8 internal immutable syn3PoolUSDCTokenIndex; // Index of USDT in Synapse Fantom 3 Pool
@@ -65,10 +66,10 @@ contract Strategy is BaseStrategy {
         uint256 _maxSlippageIn,
         uint256 _maxSlippageOut
     ) BaseStrategy(_vault) {
-        require(_maxSlippageIn <= BASIS_ONE_PERCENT, "maxSlippageIn too high");
+        require(_maxSlippageIn <= ONE_HUNDRED_PERCENT, "maxSlippageIn too high");
 
         require(
-            _maxSlippageOut <= BASIS_ONE_PERCENT,
+            _maxSlippageOut <= ONE_HUNDRED_PERCENT,
             "maxSlippageOut too high"
         );
         minReportDelay = 60 * 60 * 24 * 7; // 7 days
@@ -201,13 +202,11 @@ contract Strategy is BaseStrategy {
         // unstake all staked token
         synStakingMC.emergencyWithdraw(pid, address(this));
         uint256 _lpTokenBalance = unstakedLPBalance();
-
         if (_lpTokenBalance > 0) {
             // Try to withdraw everything in `want`
             _withdrawLiquidity(_lpTokenBalance);
 
             _lpTokenBalance = unstakedLPBalance();
-
             // If we still have LP tokens after trying to withdraw everything in `want`,
             // withdraw in anything else that we can get
             if (_lpTokenBalance > 0) {
@@ -289,34 +288,33 @@ contract Strategy is BaseStrategy {
      *  Total amount to sell in wei
      **/
     function _sellSynToWant(uint256 _amount) internal {
-        IUniswapV2Router02.route[]
-            memory routes = new IUniswapV2Router02.route[](1);
+        _checkAllowance(address(solidlyRouter), address(SYN), _amount);
+
+        IUniswapV2Router02.route[] memory routes = new IUniswapV2Router02.route[](1);
         routes[0].from = address(SYN);
         routes[0].to = address(want);
         routes[0].stable = false;
+        uint[] memory amounts = solidlyRouter.getAmountsOut(_amount, routes);
 
-        // Make sure we have enough allowance to do the swap
-        address pair = solidlyRouter.pairFor(
-            routes[0].from,
-            routes[0].to,
-            routes[0].stable
-        );
-        _checkAllowance(pair, address(SYN), _amount);
+        if (amounts[1] > 0) {
+            solidlyRouter.swapExactTokensForTokensSimple(
+                _amount, // amt to sell
+                0, // minimnum amount
+                address(SYN), // token from
+                address(want), // token to
+                false, // stable swap
+                address(this), // to
+                block.timestamp
+            );
+        }
 
-        solidlyRouter.swapExactTokensForTokens(
-            _amount,
-            0,
-            routes,
-            address(this),
-            block.timestamp
-        );
     }
 
     function _addliquidity(uint256 _amount) internal {
         _checkAllowance(address(syn3PoolSwap), address(want), _amount);
 
         uint256 _expectedLPTokensOut = scaleWantToLP(_amount) *
-            ((BASIS_ONE_PERCENT - maxSlippageIn) / BASIS_ONE_PERCENT);
+            ((ONE_HUNDRED_PERCENT - maxSlippageIn) / ONE_HUNDRED_PERCENT);
 
         uint256[] memory liquidityToAdd = new uint256[](3);
         liquidityToAdd[1] = _amount; // USDC
@@ -342,7 +340,7 @@ contract Strategy is BaseStrategy {
 
         uint256 expectedWant = scaleLPToWant(_lpAmount);
         uint256 _minAmountOfWant = expectedWant *
-            ((BASIS_ONE_PERCENT - maxSlippageOut) / BASIS_ONE_PERCENT);
+            ((ONE_HUNDRED_PERCENT - maxSlippageOut) / ONE_HUNDRED_PERCENT);
 
         syn3PoolSwap.removeLiquidityOneToken(
             _lpAmount,
@@ -489,11 +487,11 @@ contract Strategy is BaseStrategy {
         public
         onlyVaultManagers
     {
-        require(_maxSlippageIn <= BASIS_ONE_PERCENT, "maxSlippageIn too high");
+        require(_maxSlippageIn <= ONE_HUNDRED_PERCENT, "maxSlippageIn too high");
         maxSlippageIn = _maxSlippageIn;
 
         require(
-            _maxSlippageOut <= BASIS_ONE_PERCENT,
+            _maxSlippageOut <= ONE_HUNDRED_PERCENT,
             "maxSlippageOut too high"
         );
         maxSlippageOut = _maxSlippageOut;

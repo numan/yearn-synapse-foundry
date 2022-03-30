@@ -10,7 +10,7 @@ contract StrategyRevokeTest is StrategyFixture {
 
     function testRevokeStrategyFromVault(uint256 _amount) public {
         vm_std_cheats.assume(
-            _amount > 0.1 ether && _amount < 100_000_000 ether
+            _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
         );
         tip(address(want), user, _amount);
 
@@ -22,21 +22,20 @@ contract StrategyRevokeTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, DELTA);
+        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
 
         // In order to pass these tests, you will need to implement prepareReturn.
-        // TODO: uncomment the following lines.
-        // vm_std_cheats.prank(gov);
-        // vault.revokeStrategy(address(strategy));
-        // skip(1);
-        // vm_std_cheats.prank(strategist);
-        // strategy.harvest();
-        // assertRelApproxEq(want.balanceOf(address(vault)), _amount, DELTA);
+        vm_std_cheats.prank(gov);
+        vault.revokeStrategy(address(strategy));
+        skip(1);
+        vm_std_cheats.prank(strategist);
+        strategy.harvest();
+        assertRelApproxEq(want.balanceOf(address(vault)), _amount, SLIPPAGE_IN);
     }
 
     function testRevokeStrategyFromStrategy(uint256 _amount) public {
         vm_std_cheats.assume(
-            _amount > 0.1 ether && _amount < 100_000_000 ether
+            _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
         );
         tip(address(want), user, _amount);
 
@@ -47,13 +46,13 @@ contract StrategyRevokeTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, DELTA);
+        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
 
         vm_std_cheats.prank(gov);
         strategy.setEmergencyExit();
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(want.balanceOf(address(vault)), _amount, DELTA);
+        assertRelApproxEq(want.balanceOf(address(vault)), _amount, SLIPPAGE_IN);
     }
 }

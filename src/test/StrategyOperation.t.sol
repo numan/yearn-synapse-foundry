@@ -58,7 +58,7 @@ contract StrategyOperationsTest is StrategyFixture {
 
     function testEmergencyExit(uint256 _amount) public {
         vm_std_cheats.assume(
-            _amount > 0.1 ether && _amount < 100_000_000 ether
+            _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
         );
         tip(address(want), user, _amount);
 
@@ -70,7 +70,7 @@ contract StrategyOperationsTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, DELTA);
+        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
 
         // set emergency and exit
         vm_std_cheats.prank(gov);
@@ -78,12 +78,53 @@ contract StrategyOperationsTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertLt(strategy.estimatedTotalAssets(), _amount);
+        assertEq(strategy.estimatedTotalAssets(), 0);
+
+        assertRelApproxEq(want.balanceOf(address(vault)), _amount, SLIPPAGE_OUT);
+
     }
 
     function testProfitableHarvest(uint256 _amount) public {
         vm_std_cheats.assume(
-            _amount > 0.1 ether && _amount < 100_000_000 ether
+            _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
+        );
+        tip(address(want), user, _amount);
+
+        // Deposit to the vault
+        vm_std_cheats.prank(user);
+        want.approve(address(vault), _amount);
+        vm_std_cheats.prank(user);
+        vault.deposit(_amount);
+        assertRelApproxEq(want.balanceOf(address(vault)), _amount, DELTA);
+        uint256 beforePps = vault.pricePerShare();
+
+        // Harvest 1: Send funds through the strategy
+        skip(1);
+        vm_std_cheats.prank(strategist);
+        strategy.harvest();
+        uint256 initialAssets = strategy.estimatedTotalAssets();
+        assertRelApproxEq(initialAssets, _amount, SLIPPAGE_IN);
+
+
+        // simulate earning yield
+        // TODO: Another test for 0 returns
+        skip(3600 * 24 * 28); // skip 4 week
+
+
+        // Harvest 2: Realize profit
+        skip(1);
+        vm_std_cheats.prank(strategist);
+        strategy.harvest();
+        skip(3600 * 6);
+
+        uint256 profit = want.balanceOf(address(vault));
+        assertGt(strategy.estimatedTotalAssets() + profit, initialAssets);
+        assertGt(vault.pricePerShare(), beforePps);
+    }
+
+    function testHarvestWithoutEnoughProfit(uint256 _amount) public {
+        vm_std_cheats.assume(
+            _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
         );
         tip(address(want), user, _amount);
 
@@ -98,9 +139,8 @@ contract StrategyOperationsTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, DELTA);
+        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
 
-        // TODO: Add some code before harvest #2 to simulate earning yield
 
         // Harvest 2: Realize profit
         skip(1);
@@ -108,15 +148,13 @@ contract StrategyOperationsTest is StrategyFixture {
         strategy.harvest();
         skip(3600 * 6);
 
-        // TODO: Uncomment the lines below
-        // uint256 profit = want.balanceOf(address(vault));
-        // assertGt(want.balanceOf(address(strategy) + profit), _amount);
-        // assertGt(vault.pricePerShare(), beforePps)
+        uint256 profit = want.balanceOf(address(vault));
+        assertEq(strategy.estimatedTotalAssets() + profit, strategy.estimatedTotalAssets());
     }
 
     function testChangeDebt(uint256 _amount) public {
         vm_std_cheats.assume(
-            _amount > 0.1 ether && _amount < 100_000_000 ether
+            _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
         );
         tip(address(want), user, _amount);
 
@@ -131,28 +169,26 @@ contract StrategyOperationsTest is StrategyFixture {
         vm_std_cheats.prank(strategist);
         strategy.harvest();
         uint256 half = uint256(_amount / 2);
-        assertRelApproxEq(strategy.estimatedTotalAssets(), half, DELTA);
+        assertRelApproxEq(strategy.estimatedTotalAssets(), half, SLIPPAGE_IN);
 
         vm_std_cheats.prank(gov);
         vault.updateStrategyDebtRatio(address(strategy), 10_000);
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, DELTA);
+        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
 
-        // In order to pass these tests, you will need to implement prepareReturn.
-        // TODO: uncomment the following lines.
-        // vm_std_cheats.prank(gov);
-        // vault.updateStrategyDebtRatio(address(strategy), 5_000);
-        // skip(1);
-        // vm_std_cheats.prank(strategist);
-        // strategy.harvest();
-        // assertRelApproxEq(strategy.estimatedTotalAssets(), half, DELTA);
+        vm_std_cheats.prank(gov);
+        vault.updateStrategyDebtRatio(address(strategy), 5_000);
+        skip(1);
+        vm_std_cheats.prank(strategist);
+        strategy.harvest();
+        assertRelApproxEq(strategy.estimatedTotalAssets(), half, SLIPPAGE_IN);
     }
 
     function testSweep(uint256 _amount) public {
         vm_std_cheats.assume(
-            _amount > 0.1 ether && _amount < 100_000_000 ether
+            _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
         );
         tip(address(want), user, _amount);
 
@@ -170,12 +206,6 @@ contract StrategyOperationsTest is StrategyFixture {
         vm_std_cheats.prank(gov);
         vm_std_cheats.expectRevert("!shares");
         strategy.sweep(address(vault));
-
-        // TODO: If you add protected tokens to the strategy.
-        // Protected token doesn't work
-        // vm_std_cheats.prank(gov);
-        // vm_std_cheats.expectRevert("!protected");
-        // strategy.sweep(strategy.protectedToken());
 
         uint256 beforeBalance = weth.balanceOf(gov);
         uint256 wethAmount = 1 ether;
@@ -195,7 +225,7 @@ contract StrategyOperationsTest is StrategyFixture {
 
     function testTriggers(uint256 _amount) public {
         vm_std_cheats.assume(
-            _amount > 0.1 ether && _amount < 100_000_000 ether
+            _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
         );
         tip(address(want), user, _amount);
 

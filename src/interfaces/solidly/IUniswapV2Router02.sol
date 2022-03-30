@@ -19,6 +19,16 @@ interface IUniswapV2Router02 {
         uint256 deadline
     ) external returns (uint256[] memory amounts);
 
+    function swapExactTokensForTokensSimple(
+        uint amountIn,
+        uint amountOutMin,
+        address tokenFrom,
+        address tokenTo,
+        bool stable,
+        address to,
+        uint deadline
+    ) external returns (uint[] memory amounts);
+
     function getAmountsOut(
         uint amountIn,
         route[] memory routes) external view returns (uint[] memory amounts);

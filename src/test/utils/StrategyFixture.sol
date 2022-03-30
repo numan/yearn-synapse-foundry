@@ -68,6 +68,7 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
 
         // Choose a token from the tokenAddrs mapping, see _setTokenAddrs for options
         want = IERC20(tokenAddrs["USDC"]);
+        weth = IERC20(tokenAddrs["WETH"]);
 
         deployVaultAndStrategy(
             address(want),
@@ -95,12 +96,14 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
         vm_std_cheats.label(keeper, "Keeper");
         vm_std_cheats.label(address(weth), "WETH");
         vm_std_cheats.label(address(want), "USDC");
+        vm_std_cheats.label(tokenAddrs["SYN3PoolLP"], "Synapse Stable 3 LP");
+        vm_std_cheats.label(tokenAddrs["SYN"], "SYN");
         vm_std_cheats.label(syn3PoolSwap, "Synapse Stable 3 Pool");
         vm_std_cheats.label(synStakingMC, "Synapse Staking Master Chef");
         vm_std_cheats.label(solidlyRouter, "Solidly SYN<>USDC Pool");
 
-        SLIPPAGE_IN = 5;
-        SLIPPAGE_OUT = 5;
+        SLIPPAGE_IN = 150;
+        SLIPPAGE_OUT = 150;
 
         // do here additional setup
         vm_std_cheats.prank(gov);
@@ -193,7 +196,7 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
     function _setTokenAddrs() internal {
         tokenAddrs["WBTC"] = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
         tokenAddrs["YFI"] = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
-        tokenAddrs["WETH"] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+        tokenAddrs["WETH"] = 0x74b23882a30290451A17c44f4F05243b6b58C76d;
         tokenAddrs["LINK"] = 0x514910771AF9Ca656af840dff83E8264EcF986CA;
         tokenAddrs["USDT"] = 0x049d68029688eAbF473097a2fC38ef61633A3C7A;
         tokenAddrs["DAI"] = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
