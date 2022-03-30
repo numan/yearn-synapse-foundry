@@ -107,7 +107,7 @@ contract StrategyOperationsTest is StrategyFixture {
 
 
         // simulate earning yield
-        skip(7 days); // skip 4 week
+        skip(28 days); // skip 4 week
 
 
         // Harvest 2: Realize profit
