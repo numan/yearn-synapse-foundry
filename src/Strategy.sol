@@ -234,8 +234,6 @@ contract Strategy is BaseStrategy {
         nUSD.transfer(_newStrategy, nusdBalance());
         USDT.transfer(_newStrategy, usdtBalance());
 
-        // Calim all our SYN tokens and transfer
-        synStakingMC.harvest(pid, address(this));
         SYN.transfer(_newStrategy, claimedSynBalance());
 
         _unstakeLPTokens(stakedLPBalance());
