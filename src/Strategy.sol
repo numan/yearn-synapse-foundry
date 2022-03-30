@@ -187,10 +187,13 @@ contract Strategy is BaseStrategy {
             //withdraw from pool
             uint256 _unstakedLpBalance = unstakedLPBalance();
             if (_unstakedLpBalance > 0) {
+                console.log(_unstakedLpBalance);
+                console.log(_minAmountOfLPToWant(_unstakedLpBalance));
                 _withdrawLiquidity(
-                    unstakedLPBalance(),
+                    _unstakedLpBalance,
                     _minAmountOfLPToWant(_unstakedLpBalance)
                 );
+                console.log("DONE!");
             }
 
             _liquidWant = wantBalance();
@@ -317,8 +320,10 @@ contract Strategy is BaseStrategy {
     function _addliquidity(uint256 _amount) internal {
         _checkAllowance(address(syn3PoolSwap), address(want), _amount);
 
-        uint256 _expectedLPTokensOut = scaleWantToLP(_amount) *
-            ((ONE_HUNDRED_PERCENT - maxSlippageIn) / ONE_HUNDRED_PERCENT);
+        uint256 _expectedLPTokensOut = _calculateAmtWithSlippage(
+            scaleWantToLP(_amount),
+            maxSlippageIn
+        );
 
         uint256[] memory liquidityToAdd = new uint256[](3);
         liquidityToAdd[1] = _amount; // USDC
@@ -328,6 +333,16 @@ contract Strategy is BaseStrategy {
             _expectedLPTokensOut,
             block.timestamp
         );
+    }
+
+    function _calculateAmtWithSlippage(uint256 _amount, uint256 _slippage)
+        internal
+        pure
+        returns (uint256)
+    {
+        uint256 _amtWithSlippage = (_amount *
+            (ONE_HUNDRED_PERCENT - _slippage)) / ONE_HUNDRED_PERCENT;
+        return _amtWithSlippage;
     }
 
     function _unstakeLPTokens(uint256 _amount) internal {
@@ -344,10 +359,8 @@ contract Strategy is BaseStrategy {
         view
         returns (uint256)
     {
-        uint256 expectedWant = scaleLPToWant(_lpAmount);
-        return
-            expectedWant *
-            ((ONE_HUNDRED_PERCENT - maxSlippageOut) / ONE_HUNDRED_PERCENT);
+        uint256 _expectedWant = scaleLPToWant(_lpAmount);
+        return _calculateAmtWithSlippage(_expectedWant, maxSlippageOut);
     }
 
     function _withdrawLiquidity(uint256 _lpAmount, uint256 _minAmountOfWant)

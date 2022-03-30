@@ -11,7 +11,7 @@ import {IVault} from "../../interfaces/Vault.sol";
 import {IUniswapV2Router02} from "../../interfaces/solidly/IUniswapV2Router02.sol";
 
 // NOTE: if the name of the strat or file changes this needs to be updated
-import {Strategy} from "../../Strategy.sol";
+import {StrategyWrapper} from "./StrategyWrapper.sol";
 
 // Artifact paths for deploying from the deps folder, assumes that the command is run from
 // the project root.
@@ -36,7 +36,7 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
         Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     IVault public vault;
-    Strategy public strategy;
+    StrategyWrapper public strategy;
     IERC20 public weth;
     IERC20 public want;
 
@@ -140,7 +140,7 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
 
     // Deploys a strategy
     function deployStrategy(address _vault) public returns (address) {
-        Strategy _strategy = new Strategy(
+        StrategyWrapper _strategy = new StrategyWrapper(
             _vault,
             tokenAddrs["SYN3PoolLP"],
             syn3PoolSwap,
@@ -148,8 +148,8 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
             synStakingMC,
             pid,
             syn3PoolUSDCTokenIndex,
-            5000,
-            5000
+            500,
+            500
         );
 
         return address(_strategy);
@@ -184,7 +184,7 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
 
         vm_std_cheats.prank(_strategist);
         _strategy = deployStrategy(_vault);
-        strategy = Strategy(_strategy);
+        strategy = StrategyWrapper(_strategy);
 
         vm_std_cheats.prank(_strategist);
         strategy.setKeeper(_keeper);
