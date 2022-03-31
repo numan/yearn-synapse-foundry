@@ -187,8 +187,6 @@ contract Strategy is BaseStrategy {
             //withdraw from pool
             uint256 _unstakedLpBalance = unstakedLPBalance();
             if (_unstakedLpBalance > 0) {
-                console.log(_unstakedLpBalance);
-                console.log(_minAmountOfLPToWant(_unstakedLpBalance));
                 _withdrawLiquidity(
                     _unstakedLpBalance,
                     _minAmountOfLPToWant(_unstakedLpBalance)
@@ -208,8 +206,8 @@ contract Strategy is BaseStrategy {
     }
 
     function liquidateAllPositions() internal override returns (uint256) {
-        // unstake all staked token
-        synStakingMC.emergencyWithdraw(pid, address(this));
+        _unstakeLPTokens(stakedLPBalance());
+
         uint256 _lpTokenBalance = unstakedLPBalance();
         if (_lpTokenBalance > 0) {
             // Try to withdraw everything in `want`
@@ -229,6 +227,10 @@ contract Strategy is BaseStrategy {
         }
 
         return wantBalance();
+    }
+
+    function emergencyWithdraw() external onlyEmergencyAuthorized {
+            synStakingMC.emergencyWithdraw(pid, address(this));
     }
 
     // NOTE: Can override `tendTrigger` and `harvestTrigger` if necessary

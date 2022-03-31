@@ -84,6 +84,40 @@ contract StrategyOperationsTest is StrategyFixture {
 
     }
 
+    function testEmergencyWithdraw(uint256 _amount) public {
+        vm_std_cheats.assume(
+            _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
+        );
+        tip(address(want), user, _amount);
+
+        // Deposit to the vault
+        vm_std_cheats.prank(user);
+        want.approve(address(vault), _amount);
+        vm_std_cheats.prank(user);
+        vault.deposit(_amount);
+
+        // Harvest 1: Send funds through the strategy
+        skip(1);
+        vm_std_cheats.prank(strategist);
+        strategy.harvest();
+        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
+
+        // simulate earning yield
+        skip(28 days); // skip 4 weeks
+
+        // Check we have some farm tokens to claim
+        assertGt(strategy.stakedLPBalance(), 0);
+        assertEq(strategy.unstakedLPBalance(), 0);
+
+        vm_std_cheats.prank(gov);
+        strategy.emergencyWithdraw();
+
+        // Ensure all farm tokens we are entitled to have been claimed
+        assertEq(strategy.stakedLPBalance(), 0);
+        assertGt(strategy.unstakedLPBalance(), 0);
+
+    }
+
     function testProfitableHarvest(uint256 _amount) public {
         vm_std_cheats.assume(
             _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
