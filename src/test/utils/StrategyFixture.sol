@@ -39,6 +39,8 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
     StrategyWrapper public strategy;
     IERC20 public weth;
     IERC20 public want;
+    IERC20 public nusd;
+    IERC20 public usdt;
 
     mapping(string => address) tokenAddrs;
 
@@ -69,6 +71,9 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
         // Choose a token from the tokenAddrs mapping, see _setTokenAddrs for options
         want = IERC20(tokenAddrs["USDC"]);
         weth = IERC20(tokenAddrs["WETH"]);
+        nusd = IERC20(tokenAddrs["NUSD"]);
+        usdt = IERC20(tokenAddrs["USDT"]);
+
 
         deployVaultAndStrategy(
             address(want),

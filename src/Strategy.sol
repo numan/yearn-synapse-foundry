@@ -211,22 +211,25 @@ contract Strategy is BaseStrategy {
         uint256 _lpTokenBalance = unstakedLPBalance();
         if (_lpTokenBalance > 0) {
             // Try to withdraw everything in `want`
-            _withdrawLiquidity(_lpTokenBalance, 0);
-
-            _lpTokenBalance = unstakedLPBalance();
-            // If we still have LP tokens after trying to withdraw everything in `want`,
-            // withdraw in anything else that we can get
-            if (_lpTokenBalance > 0) {
-                uint256[] memory minAmounts = new uint256[](3);
-                syn3PoolSwap.removeLiquidity(
-                    _lpTokenBalance,
-                    minAmounts,
-                    block.timestamp
-                );
-            }
+            _withdrawLiquidity(
+                _lpTokenBalance,
+                _minAmountOfLPToWant(_lpTokenBalance)
+            );
         }
 
         return wantBalance();
+    }
+
+    function emergencyRemoveLiquidity() external onlyEmergencyAuthorized {
+        _unstakeLPTokens(stakedLPBalance());
+        _checkAllowance(address(syn3PoolSwap), address(syn3PoolLP), unstakedLPBalance());
+
+        uint256[] memory minAmounts = new uint256[](3);
+        syn3PoolSwap.removeLiquidity(
+            unstakedLPBalance(),
+            minAmounts,
+            block.timestamp
+        );
     }
 
     function emergencyWithdraw() external onlyEmergencyAuthorized {
