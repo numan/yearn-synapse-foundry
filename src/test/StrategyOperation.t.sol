@@ -216,7 +216,7 @@ contract StrategyOperationsTest is StrategyFixture {
         );
 
         // Harvest 2: Realize profit
-        skip(1);
+        skip(1 days);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
         skip(3600 * 6);
@@ -241,7 +241,7 @@ contract StrategyOperationsTest is StrategyFixture {
         vault.deposit(_amount);
         vm_std_cheats.prank(gov);
         vault.updateStrategyDebtRatio(address(strategy), 5_000);
-        skip(1);
+        skip(1 minutes);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
         uint256 half = uint256(_amount / 2);
@@ -249,7 +249,7 @@ contract StrategyOperationsTest is StrategyFixture {
 
         vm_std_cheats.prank(gov);
         vault.updateStrategyDebtRatio(address(strategy), 10_000);
-        skip(1);
+        skip(1 minutes);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
         assertRelApproxEq(
@@ -260,7 +260,7 @@ contract StrategyOperationsTest is StrategyFixture {
 
         vm_std_cheats.prank(gov);
         vault.updateStrategyDebtRatio(address(strategy), 5_000);
-        skip(1);
+        skip(1 minutes);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
         assertRelApproxEq(strategy.estimatedTotalAssets(), half, SLIPPAGE_IN);

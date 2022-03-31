@@ -31,7 +31,7 @@ contract StrategyRevokeTest is StrategyFixture {
         // In order to pass these tests, you will need to implement prepareReturn.
         vm_std_cheats.prank(gov);
         vault.revokeStrategy(address(strategy));
-        skip(1);
+        skip(1 minutes);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
         assertRelApproxEq(want.balanceOf(address(vault)), _amount, SLIPPAGE_IN);
