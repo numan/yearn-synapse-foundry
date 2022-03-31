@@ -22,7 +22,11 @@ contract StrategyRevokeTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
+        assertRelApproxEq(
+            strategy.estimatedTotalAssets(),
+            _amount,
+            SLIPPAGE_IN
+        );
 
         // In order to pass these tests, you will need to implement prepareReturn.
         vm_std_cheats.prank(gov);
@@ -46,7 +50,11 @@ contract StrategyRevokeTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
+        assertRelApproxEq(
+            strategy.estimatedTotalAssets(),
+            _amount,
+            SLIPPAGE_IN
+        );
 
         vm_std_cheats.prank(gov);
         strategy.setEmergencyExit();

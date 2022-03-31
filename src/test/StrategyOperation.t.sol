@@ -43,7 +43,11 @@ contract StrategyOperationsTest is StrategyFixture {
 
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
+        assertRelApproxEq(
+            strategy.estimatedTotalAssets(),
+            _amount,
+            SLIPPAGE_IN
+        );
 
         // tend
         vm_std_cheats.prank(strategist);
@@ -51,7 +55,6 @@ contract StrategyOperationsTest is StrategyFixture {
 
         vm_std_cheats.prank(user);
         vault.withdraw();
-
 
         assertRelApproxEq(want.balanceOf(user), balanceBefore, SLIPPAGE_OUT);
     }
@@ -70,7 +73,11 @@ contract StrategyOperationsTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
+        assertRelApproxEq(
+            strategy.estimatedTotalAssets(),
+            _amount,
+            SLIPPAGE_IN
+        );
 
         // set emergency and exit
         vm_std_cheats.prank(gov);
@@ -80,8 +87,11 @@ contract StrategyOperationsTest is StrategyFixture {
         strategy.harvest();
         assertEq(strategy.estimatedTotalAssets(), 0);
 
-        assertRelApproxEq(want.balanceOf(address(vault)), _amount, SLIPPAGE_OUT);
-
+        assertRelApproxEq(
+            want.balanceOf(address(vault)),
+            _amount,
+            SLIPPAGE_OUT
+        );
     }
 
     function testEmergencyWithdraw(uint256 _amount) public {
@@ -100,7 +110,11 @@ contract StrategyOperationsTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
+        assertRelApproxEq(
+            strategy.estimatedTotalAssets(),
+            _amount,
+            SLIPPAGE_IN
+        );
 
         // simulate earning yield
         skip(28 days); // skip 4 weeks
@@ -115,7 +129,6 @@ contract StrategyOperationsTest is StrategyFixture {
         // Ensure all farm tokens we are entitled to have been claimed
         assertEq(strategy.stakedLPBalance(), 0);
         assertGt(strategy.unstakedLPBalance(), 0);
-
     }
 
     function testProfitableHarvest(uint256 _amount) public {
@@ -139,10 +152,8 @@ contract StrategyOperationsTest is StrategyFixture {
         uint256 initialAssets = strategy.estimatedTotalAssets();
         assertRelApproxEq(initialAssets, _amount, SLIPPAGE_IN);
 
-
         // simulate earning yield
         skip(28 days); // skip 4 week
-
 
         // Harvest 2: Realize profit
         skip(1);
@@ -173,14 +184,12 @@ contract StrategyOperationsTest is StrategyFixture {
         assertEq(strategy.maxSlippageIn(), 0);
         assertEq(strategy.maxSlippageOut(), 0);
 
-
         // Harvest 1: Send funds through the strategy
         // Should revert because some slippage will always happen when depositing as an LP
         skip(1);
         vm_std_cheats.prank(strategist);
         vm_std_cheats.expectRevert("Couldn't mint min requested");
         strategy.harvest();
-
     }
 
     function testHarvestWithoutEnoughProfit(uint256 _amount) public {
@@ -200,8 +209,11 @@ contract StrategyOperationsTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
-
+        assertRelApproxEq(
+            strategy.estimatedTotalAssets(),
+            _amount,
+            SLIPPAGE_IN
+        );
 
         // Harvest 2: Realize profit
         skip(1);
@@ -210,7 +222,10 @@ contract StrategyOperationsTest is StrategyFixture {
         skip(3600 * 6);
 
         uint256 profit = want.balanceOf(address(vault));
-        assertEq(strategy.estimatedTotalAssets() + profit, strategy.estimatedTotalAssets());
+        assertEq(
+            strategy.estimatedTotalAssets() + profit,
+            strategy.estimatedTotalAssets()
+        );
     }
 
     function testChangeDebt(uint256 _amount) public {
@@ -237,7 +252,11 @@ contract StrategyOperationsTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
+        assertRelApproxEq(
+            strategy.estimatedTotalAssets(),
+            _amount,
+            SLIPPAGE_IN
+        );
 
         vm_std_cheats.prank(gov);
         vault.updateStrategyDebtRatio(address(strategy), 5_000);

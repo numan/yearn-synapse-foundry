@@ -31,7 +31,11 @@ contract StrategyShutdownTest is StrategyFixture {
         skip(7 hours);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
+        assertRelApproxEq(
+            strategy.estimatedTotalAssets(),
+            _amount,
+            SLIPPAGE_IN
+        );
 
         // Set Emergency
         vm_std_cheats.prank(gov);
@@ -61,7 +65,11 @@ contract StrategyShutdownTest is StrategyFixture {
         skip(1 days);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, SLIPPAGE_IN);
+        assertRelApproxEq(
+            strategy.estimatedTotalAssets(),
+            _amount,
+            SLIPPAGE_IN
+        );
 
         // Earn interest
         skip(28 days);

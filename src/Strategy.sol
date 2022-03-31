@@ -230,7 +230,7 @@ contract Strategy is BaseStrategy {
     }
 
     function emergencyWithdraw() external onlyEmergencyAuthorized {
-            synStakingMC.emergencyWithdraw(pid, address(this));
+        synStakingMC.emergencyWithdraw(pid, address(this));
     }
 
     // NOTE: Can override `tendTrigger` and `harvestTrigger` if necessary
@@ -246,19 +246,6 @@ contract Strategy is BaseStrategy {
         // NOTE: `migrate` will automatically forward all `want` in this strategy to the new one
     }
 
-    // Override this to add all tokens/tokenized positions this contract manages
-    // on a *persistent* basis (e.g. not just for swapping back to want ephemerally)
-    // NOTE: Do *not* include `want`, already included in `sweep` below
-    //
-    // Example:
-    //
-    //    function protectedTokens() internal override view returns (address[] memory) {
-    //      address[] memory protected = new address[](3);
-    //      protected[0] = tokenA;
-    //      protected[1] = tokenB;
-    //      protected[2] = tokenC;
-    //      return protected;
-    //    }
     function protectedTokens()
         internal
         view
