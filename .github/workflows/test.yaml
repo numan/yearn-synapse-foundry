@@ -1,11 +1,6 @@
 name: test
 
 on:
-  push:
-    branches:
-    - master
-    - develop
-    - feat/strat
   pull_request:
 
 jobs:
