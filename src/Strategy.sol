@@ -220,18 +220,6 @@ contract Strategy is BaseStrategy {
         return wantBalance();
     }
 
-    function emergencyRemoveLiquidity() external onlyEmergencyAuthorized {
-        _unstakeLPTokens(stakedLPBalance());
-        _checkAllowance(address(syn3PoolSwap), address(syn3PoolLP), unstakedLPBalance());
-
-        uint256[] memory minAmounts = new uint256[](3);
-        syn3PoolSwap.removeLiquidity(
-            unstakedLPBalance(),
-            minAmounts,
-            block.timestamp
-        );
-    }
-
     function emergencyWithdraw() external onlyEmergencyAuthorized {
         synStakingMC.emergencyWithdraw(pid, address(this));
     }
