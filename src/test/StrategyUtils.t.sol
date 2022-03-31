@@ -14,8 +14,10 @@ contract StrategyUtilsTest is StrategyFixture {
     function testcalculateAmtWithSlippageMath() public {
         uint256 _maxSlippageOut = 50;
         uint256 _wantAmt = 200 ether;
-        uint256 _amtWithSlippage = strategy.calculateAmtWithSlippage(_wantAmt, _maxSlippageOut);
+        uint256 _amtWithSlippage = strategy.calculateAmtWithSlippage(
+            _wantAmt,
+            _maxSlippageOut
+        );
         assertEq(199 ether, _amtWithSlippage);
     }
-
 }
