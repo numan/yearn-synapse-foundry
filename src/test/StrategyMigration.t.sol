@@ -16,7 +16,7 @@ contract StrategyMigrationTest is StrategyFixture {
     // Show that nothing is lost.
     function testMigration(uint256 _amount) public {
         vm_std_cheats.assume(
-            _amount > 0.1 ether && _amount < 100_000_000 ether
+            _amount > (ONE_USDC / 10) && _amount < (ONE_USDC * 1_000_000)
         );
         tip(address(want), user, _amount);
 
@@ -28,13 +28,21 @@ contract StrategyMigrationTest is StrategyFixture {
         skip(1);
         vm_std_cheats.prank(strategist);
         strategy.harvest();
-        assertRelApproxEq(strategy.estimatedTotalAssets(), _amount, DELTA);
+        assertRelApproxEq(
+            strategy.estimatedTotalAssets(),
+            _amount,
+            SLIPPAGE_IN
+        );
 
         // Migrate to a new strategy
         vm_std_cheats.prank(strategist);
         Strategy newStrategy = Strategy(deployStrategy(address(vault)));
         vm_std_cheats.prank(gov);
         vault.migrateStrategy(address(strategy), address(newStrategy));
-        assertRelApproxEq(newStrategy.estimatedTotalAssets(), _amount, DELTA);
+        assertRelApproxEq(
+            newStrategy.estimatedTotalAssets(),
+            _amount,
+            SLIPPAGE_IN
+        );
     }
 }
