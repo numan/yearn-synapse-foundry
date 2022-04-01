@@ -190,7 +190,6 @@ contract Strategy is BaseStrategy {
                     _unstakedLpBalance,
                     _minAmountOfLPToWant(_unstakedLpBalance)
                 );
-                console.log("DONE!");
             }
 
             _liquidWant = wantBalance();
