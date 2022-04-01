@@ -14,7 +14,6 @@ import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 import {ISwap} from "./interfaces/synapse/ISwap.sol";
 import {IMasterChef} from "./interfaces/synapse/IMasterChef.sol";
 import {IUniswapV2Router02} from "./interfaces/solidly/IUniswapV2Router02.sol";
-import "../lib/forge-std/src/console.sol";
 
 contract Strategy is BaseStrategy {
     using SafeERC20 for IERC20;
