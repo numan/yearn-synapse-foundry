@@ -50,8 +50,6 @@ contract Strategy is BaseStrategy {
     uint256 internal immutable pid; // Staking contract Pool ID
     uint8 internal immutable syn3PoolUSDCTokenIndex; // Index of USDC in Synapse Fantom 3 Pool
 
-    uint256 internal constant deadlineBuffer = 14 seconds; // Buffer for deadline
-
     constructor(
         address _vault,
         address _synStable3PoolLP,
@@ -285,7 +283,7 @@ contract Strategy is BaseStrategy {
                 address(want), // token to
                 false, // stable swap
                 address(this), // to
-                block.timestamp + deadlineBuffer
+                type(uint256).max
             );
         }
     }
@@ -304,7 +302,7 @@ contract Strategy is BaseStrategy {
         syn3PoolSwap.addLiquidity(
             liquidityToAdd,
             _expectedLPTokensOut,
-            block.timestamp + deadlineBuffer
+            type(uint256).max
         );
     }
 
@@ -357,7 +355,7 @@ contract Strategy is BaseStrategy {
             _lpAmount,
             syn3PoolUSDCTokenIndex,
             _minAmountOfWant,
-            block.timestamp + deadlineBuffer
+            type(uint256).max
         );
     }
 
