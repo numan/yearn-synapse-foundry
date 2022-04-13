@@ -219,8 +219,10 @@ contract Strategy is BaseStrategy {
     function prepareMigration(address _newStrategy) internal override {
         SYN.transfer(_newStrategy, claimedSynBalance());
 
-        _unstakeLPTokens(stakedLPBalance());
-        syn3PoolLP.transfer(_newStrategy, unstakedLPBalance());
+        uint256 _stakedLPBalance = stakedLPBalance();
+        if (_stakedLPBalance > 0) {
+            synStakingMC.withdraw(pid, _stakedLPBalance, _newStrategy);
+        }
         // NOTE: `migrate` will automatically forward all `want` in this strategy to the new one
     }
 
