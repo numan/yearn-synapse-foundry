@@ -20,10 +20,6 @@ contract Strategy is BaseStrategy {
     using Address for address;
 
     // tokens
-    IERC20 internal constant USDT =
-        IERC20(0x049d68029688eAbF473097a2fC38ef61633A3C7A);
-    IERC20 internal constant nUSD =
-        IERC20(0xED2a7edd7413021d440b09D654f3b87712abAB66);
     IERC20 internal constant SYN =
         IERC20(0xE55e19Fb4F2D85af758950957714292DAC1e25B2);
 
@@ -221,9 +217,6 @@ contract Strategy is BaseStrategy {
     // NOTE: Can override `tendTrigger` and `harvestTrigger` if necessary
 
     function prepareMigration(address _newStrategy) internal override {
-        nUSD.transfer(_newStrategy, nusdBalance());
-        USDT.transfer(_newStrategy, usdtBalance());
-
         SYN.transfer(_newStrategy, claimedSynBalance());
 
         _unstakeLPTokens(stakedLPBalance());
@@ -434,14 +427,6 @@ contract Strategy is BaseStrategy {
 
     function wantBalance() public view returns (uint256) {
         return want.balanceOf(address(this));
-    }
-
-    function usdtBalance() public view returns (uint256) {
-        return USDT.balanceOf(address(this));
-    }
-
-    function nusdBalance() public view returns (uint256) {
-        return nUSD.balanceOf(address(this));
     }
 
     // returns an estimate of want tokens based on lp token balance
