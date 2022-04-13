@@ -174,7 +174,9 @@ contract Strategy is BaseStrategy {
                 _requiredLPTokensToUnstake =
                     _lpTokensToSell -
                     _unstakedLPTokens;
-                _unstakeLPTokens(Math.min(_stakedLpTokens, _requiredLPTokensToUnstake));
+                _unstakeLPTokens(
+                    Math.min(_stakedLpTokens, _requiredLPTokensToUnstake)
+                );
             }
 
             //withdraw from pool
@@ -339,7 +341,10 @@ contract Strategy is BaseStrategy {
         return _calculateAmtWithSlippage(_expectedWant, maxSlippageOut);
     }
 
-    function withdrawLiquidity(uint256 _lpAmount, uint256 _minAmountOfWant) external onlyVaultManagers {
+    function withdrawLiquidity(uint256 _lpAmount, uint256 _minAmountOfWant)
+        external
+        onlyVaultManagers
+    {
         _withdrawLiquidity(_lpAmount, _minAmountOfWant);
     }
 
