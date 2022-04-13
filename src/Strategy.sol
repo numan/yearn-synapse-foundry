@@ -169,18 +169,14 @@ contract Strategy is BaseStrategy {
 
             uint256 _stakedLpTokens = stakedLPBalance(); // How many LP tokens do we have staked
             uint256 _unstakedLPTokens = unstakedLPBalance(); // How many are available to unstake?
-            uint256 _requiredLPTokensToUnstake; // How many more LP tokens do we need to unstake to get the required amount of `want`.
 
             // Free up the minimum amount of LP tokens to get to the amount of `want` we need
             if (_unstakedLPTokens < _lpTokensToSell) {
+                uint256 _requiredLPTokensToUnstake; // How many more LP tokens do we need to unstake to get the required amount of `want`.
                 _requiredLPTokensToUnstake =
                     _lpTokensToSell -
                     _unstakedLPTokens;
-                if (_stakedLpTokens >= _requiredLPTokensToUnstake) {
-                    _unstakeLPTokens(_requiredLPTokensToUnstake);
-                } else if (_stakedLpTokens > 0) {
-                    _unstakeLPTokens(_stakedLpTokens);
-                }
+                _unstakeLPTokens(Math.min(_stakedLpTokens, _requiredLPTokensToUnstake));
             }
 
             //withdraw from pool
@@ -324,6 +320,7 @@ contract Strategy is BaseStrategy {
     }
 
     function _unstakeLPTokens(uint256 _amount) internal {
+        require(_amount > 0, "Unstake abount must be greater than 0");
         synStakingMC.withdraw(pid, _amount, address(this));
     }
 
