@@ -20,10 +20,6 @@ contract Strategy is BaseStrategy {
     using Address for address;
 
     // tokens
-    IERC20 internal constant USDT =
-        IERC20(0x049d68029688eAbF473097a2fC38ef61633A3C7A);
-    IERC20 internal constant nUSD =
-        IERC20(0xED2a7edd7413021d440b09D654f3b87712abAB66);
     IERC20 internal constant SYN =
         IERC20(0xE55e19Fb4F2D85af758950957714292DAC1e25B2);
 
@@ -52,7 +48,9 @@ contract Strategy is BaseStrategy {
     uint256 internal constant ONE_HUNDRED_PERCENT = 10_000; // 100% bips
 
     uint256 internal immutable pid; // Staking contract Pool ID
-    uint8 internal immutable syn3PoolUSDCTokenIndex; // Index of USDT in Synapse Fantom 3 Pool
+    uint8 internal immutable syn3PoolUSDCTokenIndex; // Index of USDC in Synapse Fantom 3 Pool
+
+    uint256 internal constant deadlineBuffer = 14 seconds; // Buffer for deadline
 
     constructor(
         address _vault,
@@ -92,7 +90,7 @@ contract Strategy is BaseStrategy {
 
     function name() external pure override returns (string memory) {
         // Add your own name here, suggestion e.g. "StrategyCreamYFI"
-        return "StrategySynapseUSDC";
+        return "StrategySynapseSSSUSDC";
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
@@ -169,18 +167,16 @@ contract Strategy is BaseStrategy {
 
             uint256 _stakedLpTokens = stakedLPBalance(); // How many LP tokens do we have staked
             uint256 _unstakedLPTokens = unstakedLPBalance(); // How many are available to unstake?
-            uint256 _requiredLPTokensToUnstake; // How many more LP tokens do we need to unstake to get the required amount of `want`.
 
             // Free up the minimum amount of LP tokens to get to the amount of `want` we need
             if (_unstakedLPTokens < _lpTokensToSell) {
+                uint256 _requiredLPTokensToUnstake; // How many more LP tokens do we need to unstake to get the required amount of `want`.
                 _requiredLPTokensToUnstake =
                     _lpTokensToSell -
                     _unstakedLPTokens;
-                if (_stakedLpTokens >= _requiredLPTokensToUnstake) {
-                    _unstakeLPTokens(_requiredLPTokensToUnstake);
-                } else if (_stakedLpTokens > 0) {
-                    _unstakeLPTokens(_stakedLpTokens);
-                }
+                _unstakeLPTokens(
+                    Math.min(_stakedLpTokens, _requiredLPTokensToUnstake)
+                );
             }
 
             //withdraw from pool
@@ -225,13 +221,12 @@ contract Strategy is BaseStrategy {
     // NOTE: Can override `tendTrigger` and `harvestTrigger` if necessary
 
     function prepareMigration(address _newStrategy) internal override {
-        nUSD.transfer(_newStrategy, nusdBalance());
-        USDT.transfer(_newStrategy, usdtBalance());
-
         SYN.transfer(_newStrategy, claimedSynBalance());
 
-        _unstakeLPTokens(stakedLPBalance());
-        syn3PoolLP.transfer(_newStrategy, unstakedLPBalance());
+        uint256 _stakedLPBalance = stakedLPBalance();
+        if (_stakedLPBalance > 0) {
+            synStakingMC.withdraw(pid, _stakedLPBalance, _newStrategy);
+        }
         // NOTE: `migrate` will automatically forward all `want` in this strategy to the new one
     }
 
@@ -290,7 +285,7 @@ contract Strategy is BaseStrategy {
                 address(want), // token to
                 false, // stable swap
                 address(this), // to
-                block.timestamp
+                block.timestamp + deadlineBuffer
             );
         }
     }
@@ -309,7 +304,7 @@ contract Strategy is BaseStrategy {
         syn3PoolSwap.addLiquidity(
             liquidityToAdd,
             _expectedLPTokensOut,
-            block.timestamp
+            block.timestamp + deadlineBuffer
         );
     }
 
@@ -323,7 +318,12 @@ contract Strategy is BaseStrategy {
         return _amtWithSlippage;
     }
 
+    function unstakeLPTokens(uint256 _amount) external onlyVaultManagers {
+        _unstakeLPTokens(_amount);
+    }
+
     function _unstakeLPTokens(uint256 _amount) internal {
+        require(_amount > 0, "Unstake abount must be greater than 0");
         synStakingMC.withdraw(pid, _amount, address(this));
     }
 
@@ -341,6 +341,13 @@ contract Strategy is BaseStrategy {
         return _calculateAmtWithSlippage(_expectedWant, maxSlippageOut);
     }
 
+    function withdrawLiquidity(uint256 _lpAmount, uint256 _minAmountOfWant)
+        external
+        onlyVaultManagers
+    {
+        _withdrawLiquidity(_lpAmount, _minAmountOfWant);
+    }
+
     function _withdrawLiquidity(uint256 _lpAmount, uint256 _minAmountOfWant)
         internal
     {
@@ -350,7 +357,7 @@ contract Strategy is BaseStrategy {
             _lpAmount,
             syn3PoolUSDCTokenIndex,
             _minAmountOfWant,
-            block.timestamp
+            block.timestamp + deadlineBuffer
         );
     }
 
@@ -429,14 +436,6 @@ contract Strategy is BaseStrategy {
 
     function wantBalance() public view returns (uint256) {
         return want.balanceOf(address(this));
-    }
-
-    function usdtBalance() public view returns (uint256) {
-        return USDT.balanceOf(address(this));
-    }
-
-    function nusdBalance() public view returns (uint256) {
-        return nUSD.balanceOf(address(this));
     }
 
     // returns an estimate of want tokens based on lp token balance

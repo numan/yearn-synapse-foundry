@@ -74,7 +74,6 @@ contract StrategyFixture is ExtendedDSTest, stdCheats {
         nusd = IERC20(tokenAddrs["NUSD"]);
         usdt = IERC20(tokenAddrs["USDT"]);
 
-
         deployVaultAndStrategy(
             address(want),
             gov,
