@@ -319,6 +319,10 @@ contract Strategy is BaseStrategy {
         return _amtWithSlippage;
     }
 
+    function unstakeLPTokens(uint256 _amount) external onlyVaultManagers {
+        _unstakeLPTokens(_amount);
+    }
+
     function _unstakeLPTokens(uint256 _amount) internal {
         require(_amount > 0, "Unstake abount must be greater than 0");
         synStakingMC.withdraw(pid, _amount, address(this));
@@ -336,6 +340,10 @@ contract Strategy is BaseStrategy {
     {
         uint256 _expectedWant = scaleLPToWant(_lpAmount);
         return _calculateAmtWithSlippage(_expectedWant, maxSlippageOut);
+    }
+
+    function withdrawLiquidity(uint256 _lpAmount, uint256 _minAmountOfWant) external onlyVaultManagers {
+        _withdrawLiquidity(_lpAmount, _minAmountOfWant);
     }
 
     function _withdrawLiquidity(uint256 _lpAmount, uint256 _minAmountOfWant)
