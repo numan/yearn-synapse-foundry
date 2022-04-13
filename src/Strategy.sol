@@ -52,7 +52,7 @@ contract Strategy is BaseStrategy {
     uint256 internal constant ONE_HUNDRED_PERCENT = 10_000; // 100% bips
 
     uint256 internal immutable pid; // Staking contract Pool ID
-    uint8 internal immutable syn3PoolUSDCTokenIndex; // Index of USDT in Synapse Fantom 3 Pool
+    uint8 internal immutable syn3PoolUSDCTokenIndex; // Index of USDC in Synapse Fantom 3 Pool
 
     constructor(
         address _vault,
