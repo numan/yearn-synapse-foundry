@@ -321,8 +321,9 @@ contract Strategy is BaseStrategy {
     }
 
     function _unstakeLPTokens(uint256 _amount) internal {
-        require(_amount > 0, "Unstake abount must be greater than 0");
-        synStakingMC.withdraw(pid, _amount, address(this));
+        if (_amount > 0) {
+            synStakingMC.withdraw(pid, _amount, address(this));
+        }
     }
 
     function _stakeLPTokens(uint256 _amount) internal {
